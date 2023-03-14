@@ -1,6 +1,11 @@
-package geecache
+package lru
 
-import "container/list"
+// lru 缓存淘汰策略
+
+import (
+	"container/list"
+	"geecache/utils"
+)
 
 type Cache struct {
 	maxBytes int64                    //允许使用的最大内存
@@ -42,7 +47,7 @@ func (c *Cache) Get(key string) (value Value, ok bool) {
 	if ele, ok := c.Cache[key]; ok {
 		c.ll.MoveToFront(ele)
 		en := ele.Value.(*entry)
-		DPrintf("[Get]:%+v", en)
+		utils.DPrintf("[Get]:%+v", en)
 		return en.value, true
 	}
 	return
@@ -57,7 +62,7 @@ func (c *Cache) RemoveOldest() {
 		en := ele.Value.(*entry)
 		delete(c.Cache, en.key)
 		c.nbytes -= int64(len(en.key)) + int64(en.value.Len())
-		DPrintf("[RemoveOldest] delete element:%+v,nbytes:%d,maxBytes:%d", ele, c.nbytes, c.maxBytes)
+		utils.DPrintf("[RemoveOldest] delete element:%+v,nbytes:%d,maxBytes:%d", ele, c.nbytes, c.maxBytes)
 		if c.onEvicted != nil {
 			c.onEvicted(en.key, en.value)
 		}
@@ -69,7 +74,7 @@ func (c *Cache) Add(key string, value Value) {
 		c.ll.MoveToFront(ele)
 		en := ele.Value.(*entry)
 		c.nbytes += int64(value.Len()) - int64(en.value.Len())
-		DPrintf("[Add] update element:%+v,nbytes:%d,maxBytes:%d", ele, c.nbytes, c.maxBytes)
+		utils.DPrintf("[Add] update element:%+v,nbytes:%d,maxBytes:%d", ele, c.nbytes, c.maxBytes)
 		en.value = value
 	} else {
 		ele := c.ll.PushFront(&entry{
@@ -78,7 +83,7 @@ func (c *Cache) Add(key string, value Value) {
 		})
 		c.Cache[key] = ele
 		c.nbytes += int64(len(key)) + int64(value.Len())
-		DPrintf("[Add] add element:%+v,nbytes:%d,maxBytes:%d", ele, c.nbytes, c.maxBytes)
+		utils.DPrintf("[Add] add element:%+v,nbytes:%d,maxBytes:%d", ele, c.nbytes, c.maxBytes)
 	}
 	for c.maxBytes != 0 && c.maxBytes < c.nbytes {
 		c.RemoveOldest()
